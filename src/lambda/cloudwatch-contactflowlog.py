@@ -1,6 +1,7 @@
 import boto3
 import os
 import logging
+from datetime import datetime, timedelta
 
 # logging
 ROOT_LOG_LEVEL = os.environ["ROOT_LOG_LEVEL"]
@@ -27,7 +28,7 @@ def get_eventdata(event):
     log_events = payload['logEvents']
     return log_events
 
-def get_contactrecord(contactid):
+def get_contactrecord(contactid, ttl):
     response = ddb_table.get_item(
         Key={
             'InitialContactId': contactid
@@ -38,49 +39,52 @@ def get_contactrecord(contactid):
         log.debug(f"Initial Contact Id found: {contactid}")
         contactrecord = response['Item']
     else:
-        log.error(f"Initial Contact Id does not exist!")
-        return "Error"
+        contactrecord = {
+            'InitialContactId': contactid,
+            'Timestamps': {
+                "contactflowlogs": "0"
+                },
+            'History': [],
+            'ttl': int(ttl)
+        }
     log.info(f"Got Record: {contactrecord}")
     return contactrecord
 
 def append_log(contactrecord, log_message):
-    if "contactflowlogs" not in contactrecord:
-        contactrecord['contactflowlogs'] = []
-    contactrecord['contactflowlogs'].append(log_message)
-    contactrecord['latest_contactflow'] = {
-        "contactflowname": log_message["ContactFlowName"],
-        "contactflowmoduletype" : log_message["ContactFlowModuleType"],
-        "timestamp": log_message["Timestamp"]
-    }
-    if 'latest_timestamp' in contactrecord:
-        if log_message["Timestamp"]<contactrecord['latest_timestamp']:
-            contactrecord['latest_timestamp'] = log_message["Timestamp"]
+    contactrecord['History'].append(log_message)
+    unsorted_history = contactrecord['History']
+    sorted_history = sorted(unsorted_history, key=lambda d: d['Timestamp'])
+    contactrecord['History'] = sorted_history
+    if "contactflowlogs" in contactrecord['Timestamps']:
+        if contactrecord['Timestamps']['contactflowlogs'] < log_message['Timestamp']:
+            contactrecord['latest_contactflow'] = log_message
+            contactrecord['Timestamps']['contactflowlogs'] = log_message['Timestamp']
     else:
-        contactrecord['latest_timestamp'] = log_message["Timestamp"]
-    if 'earliest_timestamp' in contactrecord:
-        if log_message["Timestamp"]<contactrecord['earliest_timestamp']:
-            contactrecord['earliest_timestamp'] = log_message["Timestamp"]
-    else:
-        contactrecord['earliest_timestamp'] = log_message["Timestamp"]
+        contactrecord['latest_contactflow'] = log_message
+        contactrecord['Timestamps']['contactflowlogs'] = log_message['Timestamp']
+
     log.debug(f"Updating Contact Record to: {contactrecord}")
     ddb_table.put_item(
         Item=contactrecord
         )
 
-def process_log_events(log_events):
+def process_log_events(log_events, ttl):
     for log_event in log_events:
         log.debug(f'LogEvent: {log_event}')
         log_message = json.loads(log_event['message'])
         log.info(f'Log: {log_message}')
         contactid = log_message['ContactId']
-        contactrecord = get_contactrecord(contactid)
+        contactrecord = get_contactrecord(contactid, ttl)
+        log_message['LogType'] = "ContactFlowLog"
         append_log(contactrecord, log_message)
 
 def lambda_handler(event, context):
     log.debug(f"Raw Event Data: {event}")
     log_events = get_eventdata(event)
     log.debug(f"Log Events: {log_events}")
-    process_log_events(log_events)
+    datetime_ttl = datetime.now() + timedelta(hours=6)
+    ttl = datetime_ttl.strftime('%s')
+    process_log_events(log_events, ttl)
 
 
 
