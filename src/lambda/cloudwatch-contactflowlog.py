@@ -38,18 +38,12 @@ def get_contactrecord(contactid):
         log.debug(f"Initial Contact Id found: {contactid}")
         contactrecord = response['Item']
     else:
-        log.debug(f"Initial Contact Id does not exist, creating {contactid}")
-        contactrecord = {
-            'InitialContactId': contactid
-            }
-        response = ddb_table.put_item(
-        Item=contactrecord
-        )
-        log.debug(response)
+        log.error(f"Initial Contact Id does not exist!")
+        return "Error"
     log.info(f"Got Record: {contactrecord}")
     return contactrecord
 
-def append_log(contactid, contactrecord, log_message):
+def append_log(contactrecord, log_message):
     if "contactflowlogs" not in contactrecord:
         contactrecord['contactflowlogs'] = []
     contactrecord['contactflowlogs'].append(log_message)
@@ -58,6 +52,16 @@ def append_log(contactid, contactrecord, log_message):
         "contactflowmoduletype" : log_message["ContactFlowModuleType"],
         "timestamp": log_message["Timestamp"]
     }
+    if 'latest_timestamp' in contactrecord:
+        if log_message["Timestamp"]<contactrecord['latest_timestamp']:
+            contactrecord['latest_timestamp'] = log_message["Timestamp"]
+    else:
+        contactrecord['latest_timestamp'] = log_message["Timestamp"]
+    if 'earliest_timestamp' in contactrecord:
+        if log_message["Timestamp"]<contactrecord['earliest_timestamp']:
+            contactrecord['earliest_timestamp'] = log_message["Timestamp"]
+    else:
+        contactrecord['earliest_timestamp'] = log_message["Timestamp"]
     log.debug(f"Updating Contact Record to: {contactrecord}")
     ddb_table.put_item(
         Item=contactrecord
@@ -70,7 +74,7 @@ def process_log_events(log_events):
         log.info(f'Log: {log_message}')
         contactid = log_message['ContactId']
         contactrecord = get_contactrecord(contactid)
-        append_log(contactid, contactrecord, log_message)
+        append_log(contactrecord, log_message)
 
 def lambda_handler(event, context):
     log.debug(f"Raw Event Data: {event}")

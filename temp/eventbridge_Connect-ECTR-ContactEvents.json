@@ -1,0 +1,4 @@
+{
+    "source": ["aws.connect"],
+    "detail-type": ["Amazon Connect Contact Event"]
+  }
