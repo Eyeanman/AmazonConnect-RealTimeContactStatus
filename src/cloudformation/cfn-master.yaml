@@ -37,7 +37,12 @@ Parameters:
     Description: Number of minutes the status of a Contact should be kept from its last update before being deleted
     Type: Number
     Default: 1440
-
+  pAmazonConnectInstanceName:
+    Description: Name of the Amazon Connect Instance to monitor
+    Type: String
+  pAmazonConnectInstanceArn:
+    Description: Full Arn of the Amazon Connect Instance to monitor
+    Type: String
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -52,7 +57,8 @@ Metadata:
     - Label:
         default: Amazon Connect
       Parameters:
-      - pConnectInstanceArn
+      - pAmazonConnectInstanceName
+      - pAmazonConnectInstanceArn
 
     ParameterLabels:
       pEnvironment:
@@ -63,7 +69,9 @@ Metadata:
         default: Logging Level for Lambda Dependancies
       pContactStatusRetentionMinutes:
         default: Contact Status Retention (Minutes)
-      pConnectInstanceArn:
+      pAmazonConnectInstanceName:
+        default: Connect Instance Name
+      pAmazonConnectInstanceArn:
         default: Connect Instance Arn
 
 Globals:
@@ -77,17 +85,20 @@ Globals:
 
 Resources:
 
+####
+# DynamoDb Table
+####
   rDynamoDbTableAmazonConnectContactStatus:
     Type: AWS::DynamoDB::Table
     Properties:
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
-        - AttributeName: Connect_ConactId
+        - AttributeName: Connect_ContactId
           AttributeType: S
         - AttributeName: Customer_Identifier
           AttributeType: S
       KeySchema:
-        - AttributeName: Connect_ConactId
+        - AttributeName: Connect_ContactId
           KeyType: "HASH"
       GlobalSecondaryIndexes:
         - IndexName: GSI-Customer_Identifier
@@ -97,12 +108,336 @@ Resources:
           Projection: 
             ProjectionType: ALL
       TimeToLiveSpecification:
-        AttributeName: DDB_ExpiryDateTime
+        AttributeName: DDB_ExpiryEpoch
         Enabled: True
+
+####
+# Event Bridge Connect Events Lambda
+####
+  rIAMRoleEventBridgeConnectEvents:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: dynamodb-access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:DescribeTable
+              Effect: Allow
+              Resource: !GetAtt rDynamoDbTableAmazonConnectContactStatus.Arn
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  rEventBridgeConnectEvents:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.lambda_handler
+      Environment:
+        Variables:
+          LOG_LEVEL: !Ref pLogLevel
+          ROOT_LOG_LEVEL: !Ref pRootLogLevel
+          DDB_TABLENAME: !Ref rDynamoDbTableAmazonConnectContactStatus
+          CONTACT_RETENTION: !Ref pContactStatusRetentionMinutes
+      InlineCode: |        
+        import boto3
+        import os
+        import logging
+        from datetime import datetime, timedelta
+
+        # logging
+        ROOT_LOG_LEVEL = os.environ["ROOT_LOG_LEVEL"]
+        LOG_LEVEL = os.environ["LOG_LEVEL"]
+        root_logger = logging.getLogger()
+        root_logger.setLevel(ROOT_LOG_LEVEL)
+        log = logging.getLogger(__name__)
+        log.setLevel(LOG_LEVEL)
+
+        TABLE_NAME = os.environ["DDB_TABLENAME"]
+        CONTACT_RETENTION = os.environ["CONTACT_RETENTION"]
+        resource_ddb = boto3.resource('dynamodb')
+        ddb_table = resource_ddb.Table(TABLE_NAME)
+
+        import gzip
+        import json
+        import base64
+
+
+        def get_contactrecord(contactid, ttl):
+            response = ddb_table.get_item(
+                Key={
+                    'Connect_ContactId': contactid
+                    }
+                )
+            log.debug(response)
+            if 'Item' in response:
+                log.debug(f"Initial Contact Id found: {contactid}")
+                contactrecord = response['Item']
+            else:
+                log.debug(f"Initial Contact Id does not exist, creating {contactid}")
+                contactrecord = {
+                    'Connect_ContactId': contactid,
+                    'Timestamps': {
+                        "eventbridge": "0"
+                        },
+                    'History': [],
+                    'DDB_ExpiryEpoch': int(ttl)
+                }
+                response = ddb_table.put_item(
+                Item=contactrecord
+                )
+                log.debug(response)
+            log.info(f"Got Record: {contactrecord}")
+            return contactrecord
+
+
+        def process_log_detail(event_detail, ttl):
+            contactid = event_detail['contactId']
+            contactrecord = get_contactrecord(contactid,ttl)
+            # Set Common Attributes
+            contactrecord['Connect_InitiationMethod'] = event_detail['initiationMethod']
+            contactrecord['Connect_Channel'] = event_detail['channel']
+            
+            # Set Uncommon Attributes
+            if event_detail['eventType'] == "INITIATED":
+                contactrecord['initiationTimestamp'] = event_detail['initiationTimestamp']
+                if 'initialContactId' in event_detail:
+                    contactrecord['Connect_initalContactId'] = event_detail['initalContactId']
+                if 'previousContactId' in event_detail:
+                    contactrecord['Connect_previousContactId'] = event_detail['previousContactId']
+            if event_detail['eventType'] == "QUEUED":
+                contactrecord['Flag_Queued'] = True
+                contactrecord['Connect_queueInfo'] = event_detail['queueInfo']
+            if event_detail['eventType'] == "CONNECTED_TO_AGENT":
+                contactrecord['Flag_Connected_To_Agent'] = True
+                contactrecord['Connect_agentInfo'] = event_detail['agentInfo']
+            if event_detail['eventType'] == "DISCONNECTED":
+                contactrecord['Connect_disconnectTimestamp'] = event_detail['disconnectTimestamp']
+
+            contactrecord['History'].append(event_detail)
+            unsorted_history = contactrecord['History']
+            sorted_history = sorted(unsorted_history, key=lambda d: d['Timestamp'])
+            contactrecord['History'] = sorted_history
+            if contactrecord['Timestamps']['eventbridge'] < event_detail['Timestamp']:
+                contactrecord['Status'] = event_detail['eventType']
+                contactrecord['Timestamps']['eventbridge'] = event_detail['Timestamp']
+            contactrecord['DDB_ExpiryEpoch'] = int(ttl)
+            log.debug(f"Updating Contact Record to: {contactrecord}")
+            ddb_table.put_item(
+                Item=contactrecord
+                )
+
+
+        def lambda_handler(event, context):
+            log.debug(f"Raw Event Data: {event}")
+            event_detail = event['detail']
+            event_detail['Timestamp'] = event['time']
+            event_detail['LogType'] = "ContactEvent"
+            datetime_ttl = datetime.now() + timedelta(hours=int(CONTACT_RETENTION))
+            ttl = datetime_ttl.strftime('%s')
+            process_log_detail(event_detail, ttl)
+
+
+
+            return "Completed"
+
+      Role: !GetAtt rIAMRoleEventBridgeConnectEvents.Arn
+
+  rLambdaPermissionEventBridgeConnectEvents:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !GetAtt rEventBridgeConnectEvents.Arn
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt rEventsRuleEventBridgeConnectEvents.Arn
+
+  rEventsRuleEventBridgeConnectEvents:
+    Type: "AWS::Events::Rule"
+    Properties:
+      EventPattern: !Sub |
+        {
+          "source": ["aws.connect"],
+          "detail-type": ["Amazon Connect Contact Event"],
+          "detail": {
+            "instanceArn": ["${pAmazonConnectInstanceArn}"]
+          }
+        }
+      State: "ENABLED"
+      Targets: 
+        - Arn: !GetAtt rEventBridgeConnectEvents.Arn
+          Id: "rEventBridgeConnectEvents"
+      EventBusName: "default"
+
+
+####
+# Cloud Watch Amazon Connect Contact Flow Logs Lambda
+####
+
+  rIAMRoleCloudWatchContactFlowLogs:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: dynamodb-access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:DescribeTable
+              Effect: Allow
+              Resource: !GetAtt rDynamoDbTableAmazonConnectContactStatus.Arn
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  rCloudWatchContactFlowLogs:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.lambda_handler
+      Environment:
+        Variables:
+          LOG_LEVEL: !Ref pLogLevel
+          ROOT_LOG_LEVEL: !Ref pRootLogLevel
+          DDB_TABLENAME: !Ref rDynamoDbTableAmazonConnectContactStatus
+          CONTACT_RETENTION: !Ref pContactStatusRetentionMinutes
+      InlineCode: |        
+        import boto3
+        import os
+        import logging
+        from datetime import datetime, timedelta
+
+        # logging
+        ROOT_LOG_LEVEL = os.environ["ROOT_LOG_LEVEL"]
+        LOG_LEVEL = os.environ["LOG_LEVEL"]
+        root_logger = logging.getLogger()
+        root_logger.setLevel(ROOT_LOG_LEVEL)
+        log = logging.getLogger(__name__)
+        log.setLevel(LOG_LEVEL)
+
+        TABLE_NAME = os.environ["DDB_TABLENAME"]
+        CONTACT_RETENTION = os.environ["CONTACT_RETENTION"]
+        resource_ddb = boto3.resource('dynamodb')
+        ddb_table = resource_ddb.Table(TABLE_NAME)
+
+
+
+        import gzip
+        import json
+        import base64
+
+
+        def get_eventdata(event):
+            cw_data = event['awslogs']['data']
+            compressed_payload = base64.b64decode(cw_data)
+            uncompressed_payload = gzip.decompress(compressed_payload)
+            payload = json.loads(uncompressed_payload)
+            log_events = payload['logEvents']
+            return log_events
+
+        def get_contactrecord(contactid, ttl):
+            response = ddb_table.get_item(
+                Key={
+                    'Connect_ContactId': contactid
+                    }
+                )
+            log.debug(response)
+            if 'Item' in response:
+                log.debug(f"Initial Contact Id found: {contactid}")
+                contactrecord = response['Item']
+            else:
+                contactrecord = {
+                    'Connect_ContactId': contactid,
+                    'Timestamps': {
+                        "contactflowlogs": "0"
+                        },
+                    'History': [],
+                    'DDB_ExpiryEpoch': int(ttl)
+                }
+            log.info(f"Got Record: {contactrecord}")
+            return contactrecord
+
+        def append_log(contactrecord, log_message, ttl):
+            contactrecord['History'].append(log_message)
+            unsorted_history = contactrecord['History']
+            sorted_history = sorted(unsorted_history, key=lambda d: d['Timestamp'])
+            contactrecord['History'] = sorted_history
+            if "contactflowlogs" in contactrecord['Timestamps']:
+                if contactrecord['Timestamps']['contactflowlogs'] < log_message['Timestamp']:
+                    contactrecord['Connect_Latest_Contactflow'] = log_message
+                    contactrecord['Timestamps']['contactflowlogs'] = log_message['Timestamp']
+            else:
+                contactrecord['Connect_Latest_Contactflow'] = log_message
+                contactrecord['Timestamps']['contactflowlogs'] = log_message['Timestamp']
+            contactrecord['DDB_ExpiryEpoch'] = int(ttl)
+            log.debug(f"Updating Contact Record to: {contactrecord}")
+            ddb_table.put_item(
+                Item=contactrecord
+                )
+
+        def process_log_events(log_events, ttl):
+            for log_event in log_events:
+                log.debug(f'LogEvent: {log_event}')
+                log_message = json.loads(log_event['message'])
+                log.info(f'Log: {log_message}')
+                contactid = log_message['ContactId']
+                contactrecord = get_contactrecord(contactid, ttl)
+                log_message['LogType'] = "ContactFlowLog"
+                append_log(contactrecord, log_message, ttl)
+
+        def lambda_handler(event, context):
+            log.debug(f"Raw Event Data: {event}")
+            log_events = get_eventdata(event)
+            log.debug(f"Log Events: {log_events}")
+            datetime_ttl = datetime.now() + timedelta(hours=int(CONTACT_RETENTION))
+            ttl = datetime_ttl.strftime('%s')
+            process_log_events(log_events, ttl)
+
+
+
+            return "Completed"
+
+      Role: !GetAtt rIAMRoleCloudWatchContactFlowLogs.Arn
+
+  rLambdaPermissionCloudWatchContactFlowLogs:
+      Type: "AWS::Lambda::Permission"
+      Properties:
+          Action: "lambda:InvokeFunction"
+          FunctionName: !GetAtt rCloudWatchContactFlowLogs.Arn
+          Principal: !Sub "logs.${AWS::Region}.amazonaws.com"
+          SourceArn: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/connect/${pAmazonConnectInstanceName}:*"
+
+  rLogsSubscriptionFilter:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+          LogGroupName: !Sub "/aws/connect/${pAmazonConnectInstanceName}"
+          FilterPattern: ""
+          DestinationArn: !GetAtt rCloudWatchContactFlowLogs.Arn
 
 Outputs:
   oDynamoDbTableAmazonConnectContactStatusTableName:
-    Description: DyanmoDb Table name to store Contact Stats
+    Description: DyanmoDb Table name to store Contact Status
     Value:
       Ref: rDynamoDbTableAmazonConnectContactStatus
     Export:

@@ -12,6 +12,7 @@ log = logging.getLogger(__name__)
 log.setLevel(LOG_LEVEL)
 
 TABLE_NAME = os.environ["DDB_TABLENAME"]
+CONTACT_RETENTION = os.environ["CONTACT_RETENTION"]
 resource_ddb = boto3.resource('dynamodb')
 ddb_table = resource_ddb.Table(TABLE_NAME)
 
@@ -23,7 +24,7 @@ import base64
 def get_contactrecord(contactid, ttl):
     response = ddb_table.get_item(
         Key={
-            'InitialContactId': contactid
+            'Connect_ContactId': contactid
             }
         )
     log.debug(response)
@@ -33,12 +34,12 @@ def get_contactrecord(contactid, ttl):
     else:
         log.debug(f"Initial Contact Id does not exist, creating {contactid}")
         contactrecord = {
-            'InitialContactId': contactid,
+            'Connect_ContactId': contactid,
             'Timestamps': {
                 "eventbridge": "0"
                 },
             'History': [],
-            'ttl': int(ttl)
+            'DDB_ExpiryEpoch': int(ttl)
         }
         response = ddb_table.put_item(
         Item=contactrecord
@@ -52,24 +53,24 @@ def process_log_detail(event_detail, ttl):
     contactid = event_detail['contactId']
     contactrecord = get_contactrecord(contactid,ttl)
     # Set Common Attributes
-    contactrecord['initiationMethod'] = event_detail['initiationMethod']
-    contactrecord['channel'] = event_detail['channel']
+    contactrecord['Connect_InitiationMethod'] = event_detail['initiationMethod']
+    contactrecord['Connect_Channel'] = event_detail['channel']
     
     # Set Uncommon Attributes
     if event_detail['eventType'] == "INITIATED":
         contactrecord['initiationTimestamp'] = event_detail['initiationTimestamp']
         if 'initialContactId' in event_detail:
-            contactrecord['initalContactId1'] = event_detail['initalContactId']
+            contactrecord['Connect_initalContactId'] = event_detail['initalContactId']
         if 'previousContactId' in event_detail:
-            contactrecord['previousContactId'] = event_detail['previousContactId']
+            contactrecord['Connect_previousContactId'] = event_detail['previousContactId']
     if event_detail['eventType'] == "QUEUED":
-        contactrecord['flag_queued'] = True
-        contactrecord['queueInfo'] = event_detail['queueInfo']
+        contactrecord['Flag_Queued'] = True
+        contactrecord['Connect_queueInfo'] = event_detail['queueInfo']
     if event_detail['eventType'] == "CONNECTED_TO_AGENT":
-        contactrecord['flag_connected_to_agent'] = True
-        contactrecord['agentInfo'] = event_detail['agentInfo']
+        contactrecord['Flag_Connected_To_Agent'] = True
+        contactrecord['Connect_agentInfo'] = event_detail['agentInfo']
     if event_detail['eventType'] == "DISCONNECTED":
-        contactrecord['disconnectTimestamp'] = event_detail['disconnectTimestamp']
+        contactrecord['Connect_disconnectTimestamp'] = event_detail['disconnectTimestamp']
 
     contactrecord['History'].append(event_detail)
     unsorted_history = contactrecord['History']
@@ -78,7 +79,7 @@ def process_log_detail(event_detail, ttl):
     if contactrecord['Timestamps']['eventbridge'] < event_detail['Timestamp']:
         contactrecord['Status'] = event_detail['eventType']
         contactrecord['Timestamps']['eventbridge'] = event_detail['Timestamp']
-    contactrecord['ttl'] = int(ttl)
+    contactrecord['DDB_ExpiryEpoch'] = int(ttl)
     log.debug(f"Updating Contact Record to: {contactrecord}")
     ddb_table.put_item(
         Item=contactrecord
@@ -90,7 +91,7 @@ def lambda_handler(event, context):
     event_detail = event['detail']
     event_detail['Timestamp'] = event['time']
     event_detail['LogType'] = "ContactEvent"
-    datetime_ttl = datetime.now() + timedelta(hours=6)
+    datetime_ttl = datetime.now() + timedelta(hours=int(CONTACT_RETENTION))
     ttl = datetime_ttl.strftime('%s')
     process_log_detail(event_detail, ttl)
 

@@ -1,5 +1,0 @@
-{
-    "initialcontactid": "PRIMARYKEY",
-    "contactfloglogs": "lambda_cloudwatch-contactflowlog",
-    "latest_contactflow": "lambda_cloudwatch-contactflowlog"
-}

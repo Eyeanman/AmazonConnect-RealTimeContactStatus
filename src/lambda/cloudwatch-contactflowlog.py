@@ -12,8 +12,11 @@ log = logging.getLogger(__name__)
 log.setLevel(LOG_LEVEL)
 
 TABLE_NAME = os.environ["DDB_TABLENAME"]
+CONTACT_RETENTION = os.environ["CONTACT_RETENTION"]
 resource_ddb = boto3.resource('dynamodb')
 ddb_table = resource_ddb.Table(TABLE_NAME)
+
+
 
 import gzip
 import json
@@ -31,7 +34,7 @@ def get_eventdata(event):
 def get_contactrecord(contactid, ttl):
     response = ddb_table.get_item(
         Key={
-            'InitialContactId': contactid
+            'Connect_ContactId': contactid
             }
         )
     log.debug(response)
@@ -40,29 +43,29 @@ def get_contactrecord(contactid, ttl):
         contactrecord = response['Item']
     else:
         contactrecord = {
-            'InitialContactId': contactid,
+            'Connect_ContactId': contactid,
             'Timestamps': {
                 "contactflowlogs": "0"
                 },
             'History': [],
-            'ttl': int(ttl)
+            'DDB_ExpiryEpoch': int(ttl)
         }
     log.info(f"Got Record: {contactrecord}")
     return contactrecord
 
-def append_log(contactrecord, log_message):
+def append_log(contactrecord, log_message, ttl):
     contactrecord['History'].append(log_message)
     unsorted_history = contactrecord['History']
     sorted_history = sorted(unsorted_history, key=lambda d: d['Timestamp'])
     contactrecord['History'] = sorted_history
     if "contactflowlogs" in contactrecord['Timestamps']:
         if contactrecord['Timestamps']['contactflowlogs'] < log_message['Timestamp']:
-            contactrecord['latest_contactflow'] = log_message
+            contactrecord['Connect_Latest_Contactflow'] = log_message
             contactrecord['Timestamps']['contactflowlogs'] = log_message['Timestamp']
     else:
-        contactrecord['latest_contactflow'] = log_message
+        contactrecord['Connect_Latest_Contactflow'] = log_message
         contactrecord['Timestamps']['contactflowlogs'] = log_message['Timestamp']
-
+    contactrecord['DDB_ExpiryEpoch'] = int(ttl)
     log.debug(f"Updating Contact Record to: {contactrecord}")
     ddb_table.put_item(
         Item=contactrecord
@@ -76,13 +79,13 @@ def process_log_events(log_events, ttl):
         contactid = log_message['ContactId']
         contactrecord = get_contactrecord(contactid, ttl)
         log_message['LogType'] = "ContactFlowLog"
-        append_log(contactrecord, log_message)
+        append_log(contactrecord, log_message, ttl)
 
 def lambda_handler(event, context):
     log.debug(f"Raw Event Data: {event}")
     log_events = get_eventdata(event)
     log.debug(f"Log Events: {log_events}")
-    datetime_ttl = datetime.now() + timedelta(hours=6)
+    datetime_ttl = datetime.now() + timedelta(hours=int(CONTACT_RETENTION))
     ttl = datetime_ttl.strftime('%s')
     process_log_events(log_events, ttl)
 
