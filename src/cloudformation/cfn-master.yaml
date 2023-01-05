@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Amazon Connect Real Time Contact Status
+
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  pEnvironment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - sit
+      - preprod
+      - prod
+  pLogLevel:
+    Description: Dev=DEBUG, Prod=INFO
+    Type: String
+    Default: INFO
+    AllowedValues:
+      - CRITICAL
+      - ERROR
+      - WARNING
+      - INFO
+      - DEBUG
+  pRootLogLevel:
+    Description: Dev=WARNING, Prod=WARNING
+    Type: String
+    Default: WARNING
+    AllowedValues:
+      - CRITICAL
+      - ERROR
+      - WARNING
+      - INFO
+      - DEBUG
+  pContactStatusRetentionMinutes:
+    Description: Number of minutes the status of a Contact should be kept from its last update before being deleted
+    Type: Number
+    Default: 1440
+
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: Environment
+      Parameters:
+      - pEnvironment
+      - pLogLevel
+      - pRootLogLevel
+      - pContactStatusRetentionMinutes
+    - Label:
+        default: Amazon Connect
+      Parameters:
+      - pConnectInstanceArn
+
+    ParameterLabels:
+      pEnvironment:
+        default: Environment
+      pLogLevel:
+        default: Logging Level for Lambda
+      pRootLogLevel:
+        default: Logging Level for Lambda Dependancies
+      pContactStatusRetentionMinutes:
+        default: Contact Status Retention (Minutes)
+      pConnectInstanceArn:
+        default: Connect Instance Arn
+
+Globals:
+
+  Function:
+    Runtime: python3.9
+    Timeout: 300
+    MemorySize: 128
+    AutoPublishAlias: !Ref pEnvironment
+
+
+Resources:
+
+  rDynamoDbTableAmazonConnectContactStatus:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: Connect_ConactId
+          AttributeType: S
+        - AttributeName: Customer_Identifier
+          AttributeType: S
+      KeySchema:
+        - AttributeName: Connect_ConactId
+          KeyType: "HASH"
+      GlobalSecondaryIndexes:
+        - IndexName: GSI-Customer_Identifier
+          KeySchema: 
+            - AttributeName: Customer_Identifier
+              KeyType: "HASH"
+          Projection: 
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: DDB_ExpiryDateTime
+        Enabled: True
+
+Outputs:
+  oDynamoDbTableAmazonConnectContactStatusTableName:
+    Description: DyanmoDb Table name to store Contact Stats
+    Value:
+      Ref: rDynamoDbTableAmazonConnectContactStatus
+    Export:
+      Name: !Sub ${AWS::StackName}-oDynamoDbTableAmazonConnectContactStatusTableName
