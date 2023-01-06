@@ -1,6 +1,9 @@
 # AmazonConnect-RealTimeContactStatus
 Tracks the current status of each Contact taking data from various sources to give a central point to query when making routing decisions, producing real-time MI, troubleshooting etc.
 
+# Proof of Concept ONLY
+This has been built as a proof of concept only and should not be used in any production environment without further development
+
 ## Features
 * A item will be created in DynamoDb when ever an event is triggered from:
     * Event Bridge Contact Events (https://docs.aws.amazon.com/connect/latest/adminguide/contact-events.html#contact-events-data-model)
