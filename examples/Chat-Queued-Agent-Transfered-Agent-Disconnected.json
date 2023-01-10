@@ -1,0 +1,120 @@
+{
+    "Connect_ContactId": "a56502b2-8565-4227-989a-fa783a6d8dfd",
+    "Connect_Channel": "CHAT",
+    "Connect_InitiationMethod": "TRANSFER",
+    "Connect_Latest_Contactflow": {
+     "ContactFlowId": "arn:aws:connect:eu-west-2:484669704065:instance/214e7d8a-4c7e-47cd-9238-52587f990037/contact-flow/5f68e6d2-e664-4056-b840-01376438739e",
+     "ContactFlowModuleType": "AddToPlayLoop",
+     "ContactFlowName": "Default customer queue",
+     "ContactId": "a56502b2-8565-4227-989a-fa783a6d8dfd",
+     "LogType": "ContactFlowLog",
+     "Parameters": {},
+     "Timestamp": "2023-01-10T16:34:41.776Z"
+    },
+    "Connect_queueInfo": {
+     "enqueueTimestamp": "2023-01-10T16:34:41.885Z",
+     "queueArn": "arn:aws:connect:eu-west-2:484669704065:instance/214e7d8a-4c7e-47cd-9238-52587f990037/queue/603dc072-2f0f-4164-865f-1727a2b3d6e9",
+     "queueType": "STANDARD"
+    },
+    "DDB_ExpiryEpoch": 1678552487,
+    "Flag_Queued": true,
+    "History": [
+     {
+      "ContactFlowId": "arn:aws:connect:eu-west-2:484669704065:instance/214e7d8a-4c7e-47cd-9238-52587f990037/contact-flow/e74e7726-c064-408a-bb33-37d3c3290e0e",
+      "ContactFlowModuleType": "CheckHoursOfOperation",
+      "ContactFlowName": "Default queue transfer",
+      "ContactId": "a56502b2-8565-4227-989a-fa783a6d8dfd",
+      "LogType": "ContactFlowLog",
+      "Parameters": {},
+      "Results": "true",
+      "Timestamp": "2023-01-10T16:34:39.787Z"
+     },
+     {
+      "ContactFlowId": "arn:aws:connect:eu-west-2:484669704065:instance/214e7d8a-4c7e-47cd-9238-52587f990037/contact-flow/e74e7726-c064-408a-bb33-37d3c3290e0e",
+      "ContactFlowModuleType": "CheckStaffing",
+      "ContactFlowName": "Default queue transfer",
+      "ContactId": "a56502b2-8565-4227-989a-fa783a6d8dfd",
+      "LogType": "ContactFlowLog",
+      "Parameters": {},
+      "Results": "true",
+      "Timestamp": "2023-01-10T16:34:39.813Z"
+     },
+     {
+      "ContactFlowId": "arn:aws:connect:eu-west-2:484669704065:instance/214e7d8a-4c7e-47cd-9238-52587f990037/contact-flow/e74e7726-c064-408a-bb33-37d3c3290e0e",
+      "ContactFlowModuleType": "PlayPrompt",
+      "ContactFlowName": "Default queue transfer",
+      "ContactId": "a56502b2-8565-4227-989a-fa783a6d8dfd",
+      "LogType": "ContactFlowLog",
+      "Parameters": {
+       "Text": "Now transferring.",
+       "TextToSpeechType": "text",
+       "Voice": "Joanna"
+      },
+      "Timestamp": "2023-01-10T16:34:39.827Z"
+     },
+     {
+      "ContactFlowId": "arn:aws:connect:eu-west-2:484669704065:instance/214e7d8a-4c7e-47cd-9238-52587f990037/contact-flow/e74e7726-c064-408a-bb33-37d3c3290e0e",
+      "ContactFlowModuleType": "Transfer",
+      "ContactFlowName": "Default queue transfer",
+      "ContactId": "a56502b2-8565-4227-989a-fa783a6d8dfd",
+      "LogType": "ContactFlowLog",
+      "Parameters": {},
+      "Results": "false",
+      "Timestamp": "2023-01-10T16:34:41.215Z"
+     },
+     {
+      "ContactFlowId": "arn:aws:connect:eu-west-2:484669704065:instance/214e7d8a-4c7e-47cd-9238-52587f990037/contact-flow/5f68e6d2-e664-4056-b840-01376438739e",
+      "ContactFlowModuleType": "AddToPlayLoop",
+      "ContactFlowName": "Default customer queue",
+      "ContactId": "a56502b2-8565-4227-989a-fa783a6d8dfd",
+      "LogType": "ContactFlowLog",
+      "Parameters": {
+       "Text": "Thank you for calling. Your call is very important to us and will be answered in the order it was received.",
+       "Voice": "Joanna"
+      },
+      "Timestamp": "2023-01-10T16:34:41.748Z"
+     },
+     {
+      "ContactFlowId": "arn:aws:connect:eu-west-2:484669704065:instance/214e7d8a-4c7e-47cd-9238-52587f990037/contact-flow/5f68e6d2-e664-4056-b840-01376438739e",
+      "ContactFlowModuleType": "AddToPlayLoop",
+      "ContactFlowName": "Default customer queue",
+      "ContactId": "a56502b2-8565-4227-989a-fa783a6d8dfd",
+      "LogType": "ContactFlowLog",
+      "Parameters": {
+       "AudioPrompt": "arn:aws:connect:eu-west-2:484669704065:instance/214e7d8a-4c7e-47cd-9238-52587f990037/prompt/c77fd45d-3076-48e0-91d8-1f511afa77eb"
+      },
+      "Timestamp": "2023-01-10T16:34:41.759Z"
+     },
+     {
+      "ContactFlowId": "arn:aws:connect:eu-west-2:484669704065:instance/214e7d8a-4c7e-47cd-9238-52587f990037/contact-flow/5f68e6d2-e664-4056-b840-01376438739e",
+      "ContactFlowModuleType": "AddToPlayLoop",
+      "ContactFlowName": "Default customer queue",
+      "ContactId": "a56502b2-8565-4227-989a-fa783a6d8dfd",
+      "LogType": "ContactFlowLog",
+      "Parameters": {},
+      "Timestamp": "2023-01-10T16:34:41.776Z"
+     },
+     {
+      "channel": "CHAT",
+      "contactId": "a56502b2-8565-4227-989a-fa783a6d8dfd",
+      "eventType": "QUEUED",
+      "initialContactId": "edfcdfa6-358e-4594-981a-adeab87a8cc5",
+      "initiationMethod": "TRANSFER",
+      "initiationTimestamp": "2023-01-10T16:34:35.885Z",
+      "instanceArn": "arn:aws:connect:eu-west-2:484669704065:instance/214e7d8a-4c7e-47cd-9238-52587f990037",
+      "LogType": "ContactEvent",
+      "previousContactId": "edfcdfa6-358e-4594-981a-adeab87a8cc5",
+      "queueInfo": {
+       "enqueueTimestamp": "2023-01-10T16:34:41.885Z",
+       "queueArn": "arn:aws:connect:eu-west-2:484669704065:instance/214e7d8a-4c7e-47cd-9238-52587f990037/queue/603dc072-2f0f-4164-865f-1727a2b3d6e9",
+       "queueType": "STANDARD"
+      },
+      "Timestamp": "2023-01-10T16:34:41Z"
+     }
+    ],
+    "Status": "QUEUED",
+    "Timestamps": {
+     "contactflowlogs": "2023-01-10T16:34:41.776Z",
+     "eventbridge": "2023-01-10T16:34:41Z"
+    }
+   }
