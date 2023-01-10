@@ -1,0 +1,119 @@
+{
+    "Connect_ContactId": "8b6c3e87-a3d5-46d6-b8bf-3aa1def785b2",
+    "Connect_Channel": "CHAT",
+    "Connect_disconnectTimestamp": "2023-01-10T16:32:32.170Z",
+    "Connect_InitiationMethod": "API",
+    "Connect_Latest_Contactflow": {
+     "ContactFlowId": "arn:aws:connect:eu-west-2:484669704065:instance/214e7d8a-4c7e-47cd-9238-52587f990037/contact-flow/61ed43e2-db1a-47c9-840a-3704d9ab5006",
+     "ContactFlowModuleType": "GetUserInput",
+     "ContactFlowName": "ContactLens",
+     "ContactId": "8b6c3e87-a3d5-46d6-b8bf-3aa1def785b2",
+     "LogType": "ContactFlowLog",
+     "Parameters": {
+      "MaxDigits": "1",
+      "Text": "For callback, press one.\nFor Bridge, press two.",
+      "TextToSpeechType": "text",
+      "Timeout": "5000",
+      "Voice": "Joanna"
+     },
+     "Timestamp": "2023-01-10T16:32:31.391Z"
+    },
+    "DDB_ExpiryEpoch": 1678552355,
+    "History": [
+     {
+      "channel": "CHAT",
+      "contactId": "8b6c3e87-a3d5-46d6-b8bf-3aa1def785b2",
+      "eventType": "INITIATED",
+      "initiationMethod": "API",
+      "initiationTimestamp": "2023-01-10T16:32:28.682Z",
+      "instanceArn": "arn:aws:connect:eu-west-2:484669704065:instance/214e7d8a-4c7e-47cd-9238-52587f990037",
+      "LogType": "ContactEvent",
+      "Timestamp": "2023-01-10T16:32:28Z"
+     },
+     {
+      "channel": "CHAT",
+      "connectedToSystemTimestamp": "2023-01-10T16:32:30.870Z",
+      "contactId": "8b6c3e87-a3d5-46d6-b8bf-3aa1def785b2",
+      "eventType": "CONNECTED_TO_SYSTEM",
+      "initiationMethod": "API",
+      "initiationTimestamp": "2023-01-10T16:32:28.682Z",
+      "instanceArn": "arn:aws:connect:eu-west-2:484669704065:instance/214e7d8a-4c7e-47cd-9238-52587f990037",
+      "LogType": "ContactEvent",
+      "Timestamp": "2023-01-10T16:32:30Z"
+     },
+     {
+      "ContactFlowId": "arn:aws:connect:eu-west-2:484669704065:instance/214e7d8a-4c7e-47cd-9238-52587f990037/contact-flow/61ed43e2-db1a-47c9-840a-3704d9ab5006",
+      "ContactFlowModuleType": "SetLoggingBehavior",
+      "ContactFlowName": "ContactLens",
+      "ContactId": "8b6c3e87-a3d5-46d6-b8bf-3aa1def785b2",
+      "LogType": "ContactFlowLog",
+      "Parameters": {
+       "LoggingBehavior": "Enable"
+      },
+      "Timestamp": "2023-01-10T16:32:31.253Z"
+     },
+     {
+      "ContactFlowId": "arn:aws:connect:eu-west-2:484669704065:instance/214e7d8a-4c7e-47cd-9238-52587f990037/contact-flow/61ed43e2-db1a-47c9-840a-3704d9ab5006",
+      "ContactFlowModuleType": "SetQueue",
+      "ContactFlowName": "ContactLens",
+      "ContactId": "8b6c3e87-a3d5-46d6-b8bf-3aa1def785b2",
+      "LogType": "ContactFlowLog",
+      "Parameters": {
+       "Queue": "arn:aws:connect:eu-west-2:484669704065:instance/214e7d8a-4c7e-47cd-9238-52587f990037/queue/603dc072-2f0f-4164-865f-1727a2b3d6e9"
+      },
+      "Timestamp": "2023-01-10T16:32:31.261Z"
+     },
+     {
+      "ContactFlowId": "arn:aws:connect:eu-west-2:484669704065:instance/214e7d8a-4c7e-47cd-9238-52587f990037/contact-flow/61ed43e2-db1a-47c9-840a-3704d9ab5006",
+      "ContactFlowModuleType": "SetRecordingBehavior",
+      "ContactFlowName": "ContactLens",
+      "ContactId": "8b6c3e87-a3d5-46d6-b8bf-3aa1def785b2",
+      "LogType": "ContactFlowLog",
+      "Parameters": {
+       "AnalyticsBehaviorOption": "Enable",
+       "AnalyticsCustomVocabulary": "None",
+       "AnalyticsLanguageLocaleCode": "en-GB",
+       "AnalyticsRedactionOption": "Disable",
+       "AnalyticsRedactionPolicy": "RedactedAndOriginal",
+       "ChatAnalyticsMode": "ContactLens",
+       "RecordingBehaviorOption": "Enable",
+       "RecordingParticipantOption": "All",
+       "VoiceAnalyticsMode": "PostCall"
+      },
+      "Timestamp": "2023-01-10T16:32:31.279Z"
+     },
+     {
+      "ContactFlowId": "arn:aws:connect:eu-west-2:484669704065:instance/214e7d8a-4c7e-47cd-9238-52587f990037/contact-flow/61ed43e2-db1a-47c9-840a-3704d9ab5006",
+      "ContactFlowModuleType": "GetUserInput",
+      "ContactFlowName": "ContactLens",
+      "ContactId": "8b6c3e87-a3d5-46d6-b8bf-3aa1def785b2",
+      "LogType": "ContactFlowLog",
+      "Parameters": {
+       "MaxDigits": "1",
+       "Text": "For callback, press one.\nFor Bridge, press two.",
+       "TextToSpeechType": "text",
+       "Timeout": "5000",
+       "Voice": "Joanna"
+      },
+      "Timestamp": "2023-01-10T16:32:31.391Z"
+     },
+     {
+      "channel": "CHAT",
+      "connectedToSystemTimestamp": "2023-01-10T16:32:30.870Z",
+      "contactId": "8b6c3e87-a3d5-46d6-b8bf-3aa1def785b2",
+      "disconnectTimestamp": "2023-01-10T16:32:32.170Z",
+      "eventType": "DISCONNECTED",
+      "initiationMethod": "API",
+      "initiationTimestamp": "2023-01-10T16:32:28.682Z",
+      "instanceArn": "arn:aws:connect:eu-west-2:484669704065:instance/214e7d8a-4c7e-47cd-9238-52587f990037",
+      "LogType": "ContactEvent",
+      "Timestamp": "2023-01-10T16:32:32Z"
+     }
+    ],
+    "initiationTimestamp": "2023-01-10T16:32:28.682Z",
+    "Status": "DISCONNECTED",
+    "Timestamps": {
+     "contactflowlogs": "2023-01-10T16:32:31.391Z",
+     "eventbridge": "2023-01-10T16:32:32Z"
+    }
+   }

@@ -57,12 +57,11 @@ def process_log_detail(event_detail, ttl):
     contactrecord['Connect_Channel'] = event_detail['channel']
     
     # Set Uncommon Attributes
-    if event_detail['eventType'] == "INITIATED":
-        contactrecord['initiationTimestamp'] = event_detail['initiationTimestamp']
-        if 'initialContactId' in event_detail:
-            contactrecord['Connect_initalContactId'] = event_detail['initalContactId']
-        if 'previousContactId' in event_detail:
-            contactrecord['Connect_previousContactId'] = event_detail['previousContactId']
+    contactrecord['initiationTimestamp'] = event_detail['initiationTimestamp']
+    if 'initialContactId' in event_detail:
+        contactrecord['Connect_initalContactId'] = event_detail['initalContactId']
+    if 'previousContactId' in event_detail:
+        contactrecord['Connect_previousContactId'] = event_detail['previousContactId']
     if event_detail['eventType'] == "QUEUED":
         contactrecord['Flag_Queued'] = True
         contactrecord['Connect_queueInfo'] = event_detail['queueInfo']

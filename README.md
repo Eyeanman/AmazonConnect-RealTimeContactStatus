@@ -53,4 +53,5 @@ Lambda's are currently hardcoded into the CloudFormation Template for ease of de
 * Move Items to more sustainable storage for long term access (e.g. S3?)
 
 ## Gotcha's
+* Current code gets item, updates it and pushes it back, this could cause issues where events overlap each other - need to better archtict/code updates to items
 * A Call/Chat can have multiple Contacts, so if doing something on Disconnect, ensure all related ContactId's are also disconnected
